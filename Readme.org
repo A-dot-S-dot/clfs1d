@@ -1,0 +1,4 @@
+#+title: Conservation Laws Solver with Finite Elements in 1D
+
+This repository provides my code for solving Conservation Law problems in 1D
+with finite elements which I have written during my master thesis.
