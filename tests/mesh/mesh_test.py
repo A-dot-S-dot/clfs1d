@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from mesh import Interval, Simplex, UniformMesh
+from mesh import Interval, UniformMesh
 
 
 class TestUniformMesh(TestCase):
     interval = Interval(0, 1)
     element_number = 2
-    test_simplices = [Simplex(0, 0.5), Simplex(0.5, 1)]
+    test_simplices = [Interval(0, 0.5), Interval(0.5, 1)]
     mesh = UniformMesh(interval, element_number)
     points = [0, 0.25, 0.5, 0.75, 1]
     expected_indices = [[0], [0], [0, 1], [1], [1]]
