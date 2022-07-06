@@ -1,15 +1,15 @@
 """This module contains abstract classes."""
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Union, Iterator
+from typing import List, Union
 import numpy as np
 
-from math_types import BarycentricCoordinate, FunctionRealToReal
+from math_types import FunctionRealToReal
 from mesh import Interval
 
 
 class Quadrature(ABC):
     _domain: Interval
-    _nodes: List[Union[float, BarycentricCoordinate]]
+    _nodes: List[float]
     _weights: np.ndarray
 
     @property
@@ -17,7 +17,7 @@ class Quadrature(ABC):
         return self._domain
 
     @property
-    def nodes(self) -> List[Union[float, BarycentricCoordinate]]:
+    def nodes(self) -> List[float]:
         return self._nodes
 
     @property

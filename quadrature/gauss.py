@@ -55,6 +55,8 @@ class GaussianQuadrature(Quadrature):
 
 
 class GaussianQuadratureGeneralized(GaussianQuadrature):
+    """Gaussian quadrature for an arbitrary given interval."""
+
     _factor: float
     _shift: float
 

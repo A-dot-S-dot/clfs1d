@@ -1,7 +1,5 @@
 from unittest import TestCase
 
-from mesh import Simplex
-
 from quadrature.local import LocalElementQuadrature
 
 

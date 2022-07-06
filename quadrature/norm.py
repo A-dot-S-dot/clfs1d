@@ -3,7 +3,9 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from math_types import FunctionRealToReal
-from mesh import Simplex, UniformMesh
+from mesh import Interval, UniformMesh
+from mesh.transformation import AffineTransformation
+
 from quadrature.local import LocalElementQuadrature
 
 
@@ -19,18 +21,22 @@ class Norm(ABC):
 
 
 class MeshDependentIntegralNorm(Norm):
-    _local_quadrature: LocalElementQuadrature
     _mesh: UniformMesh
+    _local_quadrature: LocalElementQuadrature
+    _affine_mapping: AffineTransformation
     _determinant_derivative_affine_mapping: float
 
     def __init__(self, mesh: UniformMesh, quadrature_degree: int):
-        self._determinant_derivative_affine_mapping = mesh.step_length
+
         self._mesh = mesh
         self._local_quadrature = LocalElementQuadrature(quadrature_degree)
 
-    def set_mesh(self, mesh: UniformMesh):
+        self._affine_mapping = AffineTransformation()
         self._determinant_derivative_affine_mapping = mesh.step_length
+
+    def set_mesh(self, mesh: UniformMesh):
         self._mesh = mesh
+        self._determinant_derivative_affine_mapping = mesh.step_length
 
 
 class L2Norm(MeshDependentIntegralNorm):
@@ -43,11 +49,11 @@ class L2Norm(MeshDependentIntegralNorm):
         return np.sqrt(self._determinant_derivative_affine_mapping * integral)
 
     def _calculate_norm_on_simplex(
-        self, function: FunctionRealToReal, simplex: Simplex
+        self, function: FunctionRealToReal, simplex: Interval
     ) -> float:
         node_values = np.array(
             [
-                function(simplex.world_coordinates(node)) ** 2
+                function(self._affine_mapping(node, simplex)) ** 2
                 for node in self._local_quadrature.nodes
             ]
         )
@@ -64,11 +70,11 @@ class L1Norm(MeshDependentIntegralNorm):
         return self._determinant_derivative_affine_mapping * integral
 
     def _calculate_norm_on_simplex(
-        self, function: FunctionRealToReal, simplex: Simplex
+        self, function: FunctionRealToReal, simplex: Interval
     ) -> float:
         node_values = np.array(
             [
-                np.absolute(function(simplex.world_coordinates(node)))
+                np.absolute(function(self._affine_mapping(node, simplex)))
                 for node in self._local_quadrature.nodes
             ]
         )
@@ -91,10 +97,10 @@ class LInfinityNorm(Norm):
                 function, simplex
             )
 
-        return np.amax(maximum_per_simplex)
+        return float(np.amax(maximum_per_simplex))
 
     def _calculate_norm_on_simplex(
-        self, function: FunctionRealToReal, simplex: Simplex
+        self, function: FunctionRealToReal, simplex: Interval
     ) -> float:
         return np.amax(
             [
