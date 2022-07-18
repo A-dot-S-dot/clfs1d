@@ -3,7 +3,7 @@ from typing import Any
 from fem import FiniteElementSpace
 
 from .assembler import LocalToGlobalVectorAssembler
-from .entry_calculator import DOFVectorEntryCalculator
+from .entry_calculator import DOFEntryCalculator
 
 
 class DOFVectorBuilder:
@@ -14,18 +14,18 @@ class DOFVectorBuilder:
 
     _assembler: LocalToGlobalVectorAssembler
     _element_space: FiniteElementSpace
-    _entry_calculator: DOFVectorEntryCalculator
+    _entry_calculator: DOFEntryCalculator
 
     def __init__(
         self,
         element_space: FiniteElementSpace,
-        entry_calculator: DOFVectorEntryCalculator,
+        entry_calculator: DOFEntryCalculator,
     ):
         self._assembler = LocalToGlobalVectorAssembler(element_space, entry_calculator)
         self._element_space = element_space
         self._entry_calculator = entry_calculator
 
-    def build_vector(self, *args: Any) -> np.ndarray:
+    def build_dof(self, *args: Any) -> np.ndarray:
         dof_vector = np.zeros(self._element_space.dimension)
         self._assembler.fill_entries(dof_vector)
 

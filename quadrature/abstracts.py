@@ -1,8 +1,8 @@
 """This module contains abstract classes."""
 from abc import ABC, abstractmethod
-from typing import List, Union
-import numpy as np
+from typing import List
 
+import numpy as np
 from math_types import FunctionRealToReal
 from mesh import Interval
 

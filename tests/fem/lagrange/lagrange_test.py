@@ -17,6 +17,7 @@ class TestLinearLagrangeFiniteElementSpace(TestCase):
     interval = Interval(0, 1)
     mesh = UniformMesh(interval, element_number)
     element_space = LagrangeFiniteElementSpace(mesh, polynomial_degree)
+    expected_basis_nodes = [0, 0.5]
     basis_coefficients = [(1, 0), (0, 1)]
     test_basis: List[PiecewiseLagrangeInterpolation]
     test_points = np.linspace(interval.a, interval.b)
@@ -50,6 +51,13 @@ class TestLinearLagrangeFiniteElementSpace(TestCase):
         self.assertEqual(
             self.element_space.indices_per_simplex, self.indices_per_simplex
         )
+
+    def test_basis_nodes(self):
+        # TODO
+        for basis_node, expected_basis_node in zip(
+            self.element_space.basis_nodes, self.expected_basis_nodes
+        ):
+            self.assertEqual(basis_node, expected_basis_node)
 
     def test_basis_values(self):
         for basis_coefficients, test_element in zip(
@@ -108,6 +116,7 @@ class TestQuadraticLagrangeFiniteElementSpace(TestLinearLagrangeFiniteElementSpa
     interval = Interval(0, 1)
     mesh = UniformMesh(interval, element_number)
     element_space = LagrangeFiniteElementSpace(mesh, polynomial_degree)
+    expected_basis_nodes = [0, 0.25, 0.5, 0.75]
     basis_coefficients = [(1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1)]
     test_basis: List[PiecewiseLagrangeInterpolation]
     test_points = np.linspace(interval.a, interval.b)
@@ -132,7 +141,7 @@ class TestQuadraticLagrangeFiniteElementSpace(TestLinearLagrangeFiniteElementSpa
         self.test_basis = [element_1, element_2, element_3, element_4]
 
     def test_not_interpolable_error(self):
-        test_function = lambda x: x ** 2
+        test_function = lambda x: x**2
         self.assertRaises(ValueError, self.element_space.interpolate, test_function)
 
     def test_interpolate(self):

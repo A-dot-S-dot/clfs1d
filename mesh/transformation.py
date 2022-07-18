@@ -13,3 +13,6 @@ class AffineTransformation:
 
     def derivative(self, simplex: Interval) -> float:
         return simplex.length
+
+    def inverse_derivative(self, simplex: Interval) -> float:
+        return 1 / simplex.length

@@ -2,12 +2,12 @@ from unittest import TestCase
 
 import numpy as np
 from system.vectors.assembler import LocalToGlobalVectorAssembler
-from system.vectors.entry_calculator import DOFVectorEntryCalculator
+from system.vectors.entry_calculator import DOFEntryCalculator
 
 from ...test_helper import TestFiniteElementSpace
 
 
-class TestVectorEntryCalculator(DOFVectorEntryCalculator):
+class TestVectorEntryCalculator(DOFEntryCalculator):
     def __call__(self, simplex_index: int, local_index: int) -> float:
         return 2
 

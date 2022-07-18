@@ -12,8 +12,8 @@ from ode_solver.explicit_runge_kutta import (
 from system.matrices.discrete_gradient import DiscreteGradientMatrix
 from system.matrices.mass import MassMatrix
 from system.vectors import DOFVectorBuilder
-from system.vectors.averaged_gradient import AveragedGradientBuilder
-from system.vectors.l2_projection_gradient import L2ProjectionGradientBuilder
+from system.vectors.averaged_gradient import AveragedGradientDOFBuilder
+from system.vectors.gradient_l2_projection import GradientL2ProjectionBuilder
 from system.vectors.nonlinear_and_symmetric_stabilization import (
     NonlinearAndSymmetricStabilizationBuilder,
 )
@@ -103,9 +103,9 @@ class StabilizedLinearAdvectionSolver(LinearAdvectionSolver):
         self, gradient_approximation: str
     ) -> DOFVectorBuilder:
         if gradient_approximation == "nodal":
-            return AveragedGradientBuilder(self._element_space)
+            return AveragedGradientDOFBuilder(self._element_space)
         elif gradient_approximation == "l2_projection":
-            return L2ProjectionGradientBuilder(self._element_space, self._mass)
+            return GradientL2ProjectionBuilder(self._element_space, self._mass)
         else:
             raise NotImplementedError
 
@@ -114,7 +114,7 @@ class StabilizedLinearAdvectionSolver(LinearAdvectionSolver):
         return self._stabilization_parameter
 
     def _stab(self) -> np.ndarray:
-        return -self._stabilization_builder.build_vector(
+        return -self._stabilization_builder.build_dof(
             self._discrete_solution_dof_vector
         )
 

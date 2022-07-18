@@ -28,22 +28,18 @@ class GradientApproximationAssembler(MatrixAssembler):
 
     def fill_entries(self, matrix):
         for global_index in range(self._element_space.dimension):
-            basis_element_dof_vector = self._build_basis_element_dof_vector(
-                global_index
-            )
-            gradient_approximation_dof_vector = (
-                self._gradient_approximation_builder.build_vector(
-                    basis_element_dof_vector
-                )
+            basis_i_dof = self._build_basis_element_dof(global_index)
+            gradient_approximation_dof = self._gradient_approximation_builder.build_dof(
+                basis_i_dof
             )
 
-            for gradient_approximation_dof, i in zip(
-                gradient_approximation_dof_vector, range(self._element_space.dimension)
+            for i, gradient_approximation_dof_i in enumerate(
+                gradient_approximation_dof
             ):
-                if gradient_approximation_dof_vector[i] != 0:
-                    matrix[global_index, i] = gradient_approximation_dof
+                if gradient_approximation_dof_i != 0:
+                    matrix[global_index, i] = gradient_approximation_dof_i
 
-    def _build_basis_element_dof_vector(self, global_index: int) -> np.ndarray:
+    def _build_basis_element_dof(self, global_index: int) -> np.ndarray:
         basis_element = np.zeros(self._element_space.dimension)
         basis_element[global_index] = 1
 

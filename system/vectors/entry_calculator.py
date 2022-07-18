@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+import numpy as np
 
 
-class DOFVectorEntryCalculator(ABC):
+class DOFEntryCalculator(ABC):
     """Class for calculating a vector entry using local to global principles."""
 
     @abstractmethod

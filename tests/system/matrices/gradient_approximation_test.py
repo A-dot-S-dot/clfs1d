@@ -5,15 +5,15 @@ from fem.lagrange.lagrange import LagrangeFiniteElementSpace
 from mesh.mesh import Interval, UniformMesh
 from system.matrices.gradient_approximation import GradientApproximationMatrix
 from system.matrices.mass import MassMatrix
-from system.vectors.averaged_gradient import AveragedGradientBuilder
-from system.vectors.l2_projection_gradient import L2ProjectionGradientBuilder
+from system.vectors.averaged_gradient import AveragedGradientDOFBuilder
+from system.vectors.gradient_l2_projection import GradientL2ProjectionBuilder
 
 
 class TestLinearAveragedGradientApproximation(TestCase):
     interval = Interval(0, 1)
     mesh = UniformMesh(interval, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
-    gradient_approximation_builder = AveragedGradientBuilder(element_space)
+    gradient_approximation_builder = AveragedGradientDOFBuilder(element_space)
     gradient_approximation = GradientApproximationMatrix(
         element_space, gradient_approximation_builder
     )
@@ -36,7 +36,7 @@ class TestLinearL2ProjectionGradientApproximation(
     mesh = UniformMesh(interval, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
     mass = MassMatrix(element_space, build_inverse=True)
-    gradient_approximation_builder = L2ProjectionGradientBuilder(element_space, mass)
+    gradient_approximation_builder = GradientL2ProjectionBuilder(element_space, mass)
     gradient_approximation = GradientApproximationMatrix(
         element_space, gradient_approximation_builder
     )
@@ -49,7 +49,7 @@ class TestQuadraticAveragedGradientApproximation(
     interval = Interval(0, 1)
     mesh = UniformMesh(interval, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
-    gradient_approximation_builder = AveragedGradientBuilder(element_space)
+    gradient_approximation_builder = AveragedGradientDOFBuilder(element_space)
     gradient_approximation = GradientApproximationMatrix(
         element_space, gradient_approximation_builder
     )
@@ -65,7 +65,7 @@ class TestQuadraticL2ProjectionGradientApproximation(
     mesh = UniformMesh(interval, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
     mass = MassMatrix(element_space, build_inverse=True)
-    gradient_approximation_builder = L2ProjectionGradientBuilder(element_space, mass)
+    gradient_approximation_builder = GradientL2ProjectionBuilder(element_space, mass)
     gradient_approximation = GradientApproximationMatrix(
         element_space, gradient_approximation_builder
     )

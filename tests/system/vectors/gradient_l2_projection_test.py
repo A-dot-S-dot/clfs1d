@@ -1,12 +1,10 @@
 from unittest import TestCase
 
-from system.vectors.l2_projection_gradient import L2ProjectionGradientBuilder
-from system.matrices.mass import MassMatrix
-
-from mesh.mesh import Interval, UniformMesh
-from fem.lagrange.lagrange import LagrangeFiniteElementSpace
-
 import numpy as np
+from fem.lagrange.lagrange import LagrangeFiniteElementSpace
+from mesh.mesh import Interval, UniformMesh
+from system.matrices.mass import MassMatrix
+from system.vectors.gradient_l2_projection import GradientL2ProjectionBuilder
 
 
 class TestLinearL2ProjectionGradient(TestCase):
@@ -14,7 +12,7 @@ class TestLinearL2ProjectionGradient(TestCase):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
     mass = MassMatrix(element_space, build_inverse=True)
-    dof_builder = L2ProjectionGradientBuilder(element_space, mass)
+    dof_builder = GradientL2ProjectionBuilder(element_space, mass)
     test_dof_vectors = [np.array([1, 0]), np.array([0, 1])]
     expected_gradients = [[0, 0], [0, 0]]
 
@@ -22,7 +20,7 @@ class TestLinearL2ProjectionGradient(TestCase):
         for dof_vector, expected_gradient in zip(
             self.test_dof_vectors, self.expected_gradients
         ):
-            gradient = self.dof_builder.build_vector(dof_vector)
+            gradient = self.dof_builder.build_dof(dof_vector)
             for i in range(len(gradient)):
                 self.assertAlmostEqual(
                     gradient[i],
@@ -36,7 +34,7 @@ class TestQuadraticL2ProjectionGradient(TestLinearL2ProjectionGradient):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
     mass = MassMatrix(element_space, build_inverse=True)
-    dof_builder = L2ProjectionGradientBuilder(element_space, mass)
+    dof_builder = GradientL2ProjectionBuilder(element_space, mass)
     test_dof_vectors = [
         np.array([1, 0, 0, 0]),
         np.array([0, 1, 0, 0]),

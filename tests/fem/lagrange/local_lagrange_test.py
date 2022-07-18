@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import numpy as np
+from fem.abstracts import LocalFiniteElement
 from fem.lagrange.local_lagrange import LocalLagrangeBasis
 
 from ...test_helper import discrete_derivative
@@ -12,45 +13,55 @@ class TestLocalLagrangeBasis(TestCase):
 
     def test_nodes(self):
         expected_nodes = [
-            [(1, 0), (0, 1)],
-            [(1, 0), (0.5, 0.5), (0, 1)],
-            [(1, 0), (2 / 3, 1 / 3), (1 / 3, 2 / 3), (0, 1)],
+            [0, 1],
+            [0, 1 / 2, 1],
+            [0, 1 / 3, 2 / 3, 1],
         ]
 
-        for local_basis, expected_basis_nodes in zip(
-            self.local_bases[:3], expected_nodes
-        ):
-            for node, expected_node in zip(local_basis.nodes, expected_basis_nodes):
-                self.assertTupleEqual(node, expected_node)
+        for basis, expected_basis_nodes in zip(self.local_bases[:3], expected_nodes):
+            for node, expected_node in zip(basis.nodes, expected_basis_nodes):
+                self.assertEqual(node, expected_node)
 
     def test_delta_property(self):
-        for local_basis in self.local_bases:
-            for i, node_1 in enumerate(local_basis.nodes):
-                basis_element = local_basis.get_element_at_node(node_1)
-                for j, node_2 in enumerate(local_basis.nodes):
-                    self.assertAlmostEqual(
-                        basis_element(node_2),
-                        float(node_1 == node_2),
-                        msg=f"p={local_basis.polynomial_degree}, basis_index={i}, node_index={j}",
-                    )
+        for basis in self.local_bases:
+            self._test_delta_property_for_basis(basis)
+
+    def _test_delta_property_for_basis(self, basis: LocalLagrangeBasis):
+        for i in range(len(basis.nodes)):
+            self._compare_basis_element_with_basis(i, basis)
+
+    def _compare_basis_element_with_basis(
+        self, basis_index: int, basis: LocalLagrangeBasis
+    ):
+        node_i = basis.nodes[basis_index]
+        basis_element = basis.get_element_at_node(node_i)
+
+        for j, node_j in enumerate(basis.nodes):
+            self.assertAlmostEqual(
+                basis_element(node_j),
+                float(node_i == node_j),
+                msg=f"p={basis.polynomial_degree}, basis_index={basis_index}, node_index={j}",
+            )
 
     def test_len(self):
-        for local_basis in self.local_bases:
-            self.assertEqual(len(local_basis), local_basis.polynomial_degree + 1)
+        for basis in self.local_bases:
+            self.assertEqual(len(basis), basis.polynomial_degree + 1)
 
     def test_derivative(self):
-        for local_basis in self.local_bases[:4]:
-            for element_index, element in enumerate(local_basis):
-                for lambda_0 in np.linspace(0, 1):
-                    lambda_1 = 1 - lambda_0
-                    self.assertAlmostEqual(
-                        element.derivative((lambda_0, lambda_1))[0],
-                        discrete_derivative(lambda x: element((x, lambda_1)), lambda_0),
-                        msg=f"entry=0, p={local_basis.polynomial_degree} , element={element_index}, point=({lambda_0},{lambda_1})",
-                        delta=1e-7,
-                    )
-                    self.assertAlmostEqual(
-                        element.derivative((lambda_0, lambda_1))[1],
-                        0,
-                        msg=f"entry=1, p={local_basis.polynomial_degree}, element={element_index}, point=({lambda_0},{lambda_1})",
-                    )
+        for basis in self.local_bases[:4]:
+            self._test_derivative_for_basis(basis)
+
+    def _test_derivative_for_basis(self, basis: LocalLagrangeBasis):
+        for element_index, element in enumerate(basis):
+            self._test_derivative_for_element(element, element_index, basis)
+
+    def _test_derivative_for_element(
+        self, element: LocalFiniteElement, element_index: int, basis: LocalLagrangeBasis
+    ):
+        for x in np.linspace(0, 1):
+            self.assertAlmostEqual(
+                element.derivative(x),
+                discrete_derivative(element, x),
+                msg=f"p={basis.polynomial_degree} , element={element_index}, point={x}",
+                delta=1e-7,
+            )

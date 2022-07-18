@@ -6,7 +6,8 @@ from numpy import cos, exp, sin
 
 from mesh.interval import Interval
 
-from .test_helper import discrete_derivative, PiecewiseLagrangeInterpolation
+from .discrete_derivative import discrete_derivative
+from .piecewise_lagrange_interpolation import PiecewiseLagrangeInterpolation
 
 
 class TestDiscreteDerivative(TestCase):

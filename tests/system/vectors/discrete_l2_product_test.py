@@ -2,15 +2,17 @@ from typing import List
 from unittest import TestCase
 
 import numpy as np
+from fem import FastFunction
+from fem.fast_element import FastFiniteElement
 from fem.lagrange.lagrange import LagrangeFiniteElementSpace
 from mesh.mesh import Interval, UniformMesh
 from quadrature.local import LocalElementQuadrature
 from scipy.integrate import quad
-from system.vectors.l2_product_function_basis import (
-    L2ProductBasisBuilder,
-    L2ProductDerivativeBasisBuilder,
+from system.vectors.discrete_l2_product import (
+    DiscreteL2ProductBuilder,
+    DiscreteGradientL2ProductBuilder,
 )
-from ...test_helper import *
+from ...test_helper.lagrange_basis_elements import *
 
 
 class TestL2ProductLinearBasisBuilder(TestCase):
@@ -18,10 +20,17 @@ class TestL2ProductLinearBasisBuilder(TestCase):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
     quadrature = LocalElementQuadrature(2)
-    test_functions = [lambda x: 1, lambda x: x, lambda x: x**2 - 2 * x]
+    test_functions = [lambda _: 1, lambda x: x, lambda x: x**2 - 2 * x]
+    test_fast_functions = [
+        FastFunction(lambda _: 1, lambda _: 0, mesh, quadrature.nodes),
+        FastFunction(lambda x: x, lambda _: 1, mesh, quadrature.nodes),
+        FastFunction(
+            lambda x: x**2 - 2 * x, lambda x: 2 * x - 2, mesh, quadrature.nodes
+        ),
+    ]
     test_functions_strings = ["1", "x", "x²-2x"]
     basis = basis1
-    l2_product_builder = L2ProductBasisBuilder(element_space, quadrature)
+    discrete_l2_product_builder = DiscreteL2ProductBuilder(element_space, quadrature)
     expected_dof_vectors: List[np.ndarray]
 
     def __init__(self, *args, **kwargs):
@@ -45,16 +54,18 @@ class TestL2ProductLinearBasisBuilder(TestCase):
             self.expected_dof_vectors.append(expected_dof_vector)
 
     def test_build_vector(self):
-        for function, functions_strings, expected_l2_product in zip(
-            self.test_functions, self.test_functions_strings, self.expected_dof_vectors
+        for fast_function, functions_strings, expected_l2_product in zip(
+            self.test_fast_functions,
+            self.test_functions_strings,
+            self.expected_dof_vectors,
         ):
-            self.l2_product_builder.setup_entry_calculator(function)
-            l2_product = self.l2_product_builder.build_vector()
+            self.discrete_l2_product_builder.set_left_function(fast_function)
+            l2_product = self.discrete_l2_product_builder.build_dof()
             for i in range(self.element_space.dimension):
                 self.assertAlmostEqual(
                     l2_product[i],
                     expected_l2_product[i],
-                    msg=f"index={i}, f(x)={functions_strings}",
+                    msg=f"entry={i}, f(x)={functions_strings}",
                 )
 
 
@@ -64,7 +75,9 @@ class TestL2ProductLinearDerivativeBasisBuilder(TestL2ProductLinearBasisBuilder)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
     quadrature = LocalElementQuadrature(2)
     basis = basis1_derivative
-    l2_product_builder = L2ProductDerivativeBasisBuilder(element_space, quadrature)
+    discrete_l2_product_builder = DiscreteGradientL2ProductBuilder(
+        element_space, quadrature
+    )
 
 
 class TestL2ProductQuadraticBasisBuilder(TestL2ProductLinearBasisBuilder):
@@ -72,8 +85,15 @@ class TestL2ProductQuadraticBasisBuilder(TestL2ProductLinearBasisBuilder):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
     quadrature = LocalElementQuadrature(3)
+    test_fast_functions = [
+        FastFunction(lambda _: 1, lambda _: 0, mesh, quadrature.nodes),
+        FastFunction(lambda x: x, lambda _: 1, mesh, quadrature.nodes),
+        FastFunction(
+            lambda x: x**2 - 2 * x, lambda x: 2 * x - 2, mesh, quadrature.nodes
+        ),
+    ]
     basis = basis2
-    l2_product_builder = L2ProductBasisBuilder(element_space, quadrature)
+    discrete_l2_product_builder = DiscreteL2ProductBuilder(element_space, quadrature)
 
 
 class TestL2ProductQuadraticDerivativeBasisBuilder(TestL2ProductLinearBasisBuilder):
@@ -81,5 +101,14 @@ class TestL2ProductQuadraticDerivativeBasisBuilder(TestL2ProductLinearBasisBuild
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
     quadrature = LocalElementQuadrature(3)
+    test_fast_functions = [
+        FastFunction(lambda _: 1, lambda _: 0, mesh, quadrature.nodes),
+        FastFunction(lambda x: x, lambda _: 1, mesh, quadrature.nodes),
+        FastFunction(
+            lambda x: x**2 - 2 * x, lambda x: 2 * x - 2, mesh, quadrature.nodes
+        ),
+    ]
     basis = basis2_derivative
-    l2_product_builder = L2ProductDerivativeBasisBuilder(element_space, quadrature)
+    discrete_l2_product_builder = DiscreteGradientL2ProductBuilder(
+        element_space, quadrature
+    )

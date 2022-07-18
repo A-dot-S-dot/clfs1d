@@ -12,14 +12,7 @@ class MassEntryCalculator(ConstantSystemMatrixEntryCalculator):
     _determinant_derivative_affine_mapping: float
 
     def __init__(self, element_space: FiniteElementSpace):
-        if not isinstance(element_space.mesh, UniformMesh):
-            raise NotImplementedError(
-                "Mass matrix can only be calculated for uniform meshes."
-            )
-
-        step_length = element_space.mesh.step_length
-        self._determinant_derivative_affine_mapping = step_length
-
+        self._determinant_derivative_affine_mapping = element_space.mesh.step_length
         ConstantSystemMatrixEntryCalculator.__init__(
             self, element_space, element_space.polynomial_degree + 1
         )
@@ -41,6 +34,12 @@ class MassMatrix(SystemMatrix):
     the basis of the element space."""
 
     def __init__(self, element_space: FiniteElementSpace, build_inverse: bool = False):
+
+        if not isinstance(element_space.mesh, UniformMesh):
+            raise NotImplementedError(
+                "Mass matrix can only be calculated for uniform meshes."
+            )
+
         mass_entry_calculator = MassEntryCalculator(element_space)
         assembler = LocalToGlobalMatrixAssembler(element_space, mass_entry_calculator)
 

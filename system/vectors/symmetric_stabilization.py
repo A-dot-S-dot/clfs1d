@@ -2,22 +2,22 @@
 
 The symmetric stabilization is defined via
 
-    s(uh, vi) = c*I((Dvi-gh(vi))*(Duh-gh(uh)), Omega),
+    s(v, bi) = c*I((Dbi-gh(bi))*(Dv-gh(v)), Omega),
 
 where c=h/2p and gh is a gradient approximation operator. It is more efficient
 to calculate the above mentioned term differently. Obviously, we have
 
-    s(uh, vi) = c*((Duh-g(uh), Dvi)-(Duh-g(uh), g(vi))),
+    s(v, bi) = c*((Dv-g(v), Dbi)-(Dv-g(v), g(bi))),
 
 where (.,.) denotes the L2-product. Therefore, we divide the above mentioned
 term in two parts
 
-    (Duh-g(uh), Dvi)     and     (Duh-g(uh), g(vi)).
+    (Dv-g(v), Dbi)     and     (Dv-g(v), g(bi)).
 
-Using a gradient approximation matrix G_ij = g_j(vi), we obtain for the second
+Using a gradient approximation matrix G_ij = g_j(bi), we obtain for the second
 term
 
-    (Duh-g(uh), g(vi)) = G_ij*(Duh-g(uh), vj),
+    (Dv-g(v), g(bi)) = G_ij*(Dv-g(v), bj),
 
 where we use Einstein's sum convention. The adventage is obviously, that G_ij can
 be calculated in preprocessing.
@@ -30,20 +30,19 @@ from system.matrices import SystemMatrix
 from system.matrices.gradient_approximation import GradientApproximationMatrix
 
 from .builder import DOFVectorBuilder
-from .l2_product_correction_basis import (
-    L2ProductCorrectionBasisEntryCalculator,
-    L2ProductCorrectionDerivativeBasisEntryCalculator,
-    L2ProductCorrectionBasisBuilder,
+from .gradient_correction import (
+    GradientCorrectionGradientEntryCalculator,
+    GradientCorrectionBuilder,
+    GradientCorrectionEntryCalculator,
 )
 
 
 class SymmetricStabilizationBuilder(DOFVectorBuilder):
-    _element_space: FiniteElementSpace
     _stabilization_factor: float
     _gradient_approximation_builder: DOFVectorBuilder
 
-    _l2_product_correction_basis_builder: L2ProductCorrectionBasisBuilder
-    _l2_product_correction_derivative_basis_builder: L2ProductCorrectionBasisBuilder
+    _gradient_correction_builder: GradientCorrectionBuilder
+    _gradient_correction_gradient_builder: GradientCorrectionBuilder
 
     _gradient_approximation_matrix: SystemMatrix
 
@@ -57,8 +56,8 @@ class SymmetricStabilizationBuilder(DOFVectorBuilder):
         self._build_stabilization_factor(stabilization_parameter)
 
         self._gradient_approximation_builder = gradient_approximation_builder
-        self._build_l2_product_correction_basis_builder()
-        self._build_correction_derivative_builder()
+        self._build_gradient_correction_builder()
+        self._build_gradient_correction_gradient_builder()
 
         self._build_gradient_approximation_matrix()
 
@@ -69,31 +68,25 @@ class SymmetricStabilizationBuilder(DOFVectorBuilder):
             / (2 * self._element_space.polynomial_degree)
         )
 
-    def _build_l2_product_correction_basis_builder(self):
-        l2_product_correction_basis_entry_calculator = (
-            L2ProductCorrectionBasisEntryCalculator(
-                self._element_space,
-                self._element_space.polynomial_degree + 1,
-            )
+    def _build_gradient_correction_builder(self):
+        entry_calculator = GradientCorrectionEntryCalculator(
+            self._element_space,
+            self._element_space.polynomial_degree + 1,
         )
 
-        self._l2_product_correction_basis_builder = L2ProductCorrectionBasisBuilder(
-            self._element_space, l2_product_correction_basis_entry_calculator
+        self._gradient_correction_builder = GradientCorrectionBuilder(
+            self._element_space, entry_calculator
         )
 
-    def _build_correction_derivative_builder(self):
-        l2_product_correction_derivative_basis_entry_calculator = (
-            L2ProductCorrectionDerivativeBasisEntryCalculator(
-                self._element_space,
-                self._element_space.polynomial_degree,
-            )
+    def _build_gradient_correction_gradient_builder(self):
+        entry_calculator = GradientCorrectionGradientEntryCalculator(
+            self._element_space,
+            self._element_space.polynomial_degree,
         )
 
-        self._l2_product_correction_derivative_basis_builder = (
-            L2ProductCorrectionBasisBuilder(
-                self._element_space,
-                l2_product_correction_derivative_basis_entry_calculator,
-            )
+        self._gradient_correction_gradient_builder = GradientCorrectionBuilder(
+            self._element_space,
+            entry_calculator,
         )
 
     def _build_gradient_approximation_matrix(self):
@@ -101,26 +94,20 @@ class SymmetricStabilizationBuilder(DOFVectorBuilder):
             self._element_space, self._gradient_approximation_builder
         )
 
-    def build_vector(self, discrete_solution_dof_vector: np.ndarray) -> np.ndarray:
+    def build_dof(self, discrete_solution_dof_vector: np.ndarray) -> np.ndarray:
         gradient_approximation_dof_vector = (
-            self._gradient_approximation_builder.build_vector(
-                discrete_solution_dof_vector
-            )
+            self._gradient_approximation_builder.build_dof(discrete_solution_dof_vector)
         )
-        l2_product_correction_basis_vector = (
-            self._l2_product_correction_basis_builder.build_vector(
-                discrete_solution_dof_vector, gradient_approximation_dof_vector
-            )
+        gradient_correction_vector = self._gradient_correction_builder.build_dof(
+            discrete_solution_dof_vector, gradient_approximation_dof_vector
         )
-        l2_product_correction_derivative_basis_vector = (
-            self._l2_product_correction_derivative_basis_builder.build_vector(
+        gradient_correction_gradient_vector = (
+            self._gradient_correction_gradient_builder.build_dof(
                 discrete_solution_dof_vector, gradient_approximation_dof_vector
             )
         )
 
         return self._stabilization_factor * (
-            l2_product_correction_derivative_basis_vector
-            - self._gradient_approximation_matrix.dot(
-                l2_product_correction_basis_vector
-            )
+            gradient_correction_gradient_vector
+            - self._gradient_approximation_matrix.dot(gradient_correction_vector)
         )

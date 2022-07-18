@@ -3,26 +3,26 @@ symmetric (NSym) stabilization vector.
 
 The symmetric and nonlinear stabilization is defined via
 
-    s(uh, vi) = c*I((1-ah)*Duh*Dvi + ah*(Duh-g(uh))*(Dvi-g(vi)), Omega),
+    s(v, bi) = c*I((1-ah)*Dv*Dbi + ah*(Dv-g(v))*(Dbi-g(bi)), Omega),
 
 with
 
-    ah = 1-min(omega, |Duh-gh|/|Duh|),
+    ah = 1-min(omega, |Dv-gh|/|Dv|),
 
 c=h/2p and gh is a gradient approximation. It is more efficient to calculate the
 above mentioned term differently. Obviously, we have
 
-    s(uh, vi) = c*((Duh-ah*g(uh), Dvi)-(ah*(Duh-g(uh)), g(vi))),
+    s(v, bi) = c*((Dv-ah*g(v), Dbi)-(ah*(Dv-g(v)), g(bi))),
 
 where (.,.) denotes the L2-product. Therefore, we divide the above mentioned
 term in two parts
 
-    (Duh-ah*g(uh), Dvi)     and     (ah*(Duh-g(uh)), g(vi)).
+    (Dv-ah*g(v), Dbi)     and     (ah*(Dv-g(v)), g(bi)).
 
-Using a gradient approximation matrix G_ij = g_j(vi), we obtain for the second
+Using a gradient approximation matrix G_ij = g_j(bi), we obtain for the second
 term
 
-    (ah*(Duh-g(uh)), g(vi)) = G_ij*(ah*(Duh-g(uh)), vj),
+    (ah*(Dv-g(v)), g(bi)) = G_ij*(ah*(Dv-g(v)), bj),
 
 where we use Einstein's sum convention. The adventage is obviously, that G_ij can
 be calculated in preprocessing.
@@ -35,17 +35,15 @@ from system.matrices import SystemMatrix
 from system.matrices.gradient_approximation import GradientApproximationMatrix
 
 from .builder import DOFVectorBuilder
-from .l2_product_correction_basis import (
-    L2ProductCorrectionBasisBuilder,
-    L2ProductCorrectionBasisEntryCalculator,
-    L2ProductCorrectionDerivativeBasisEntryCalculator,
+from .gradient_correction import (
+    GradientCorrectionBuilder,
+    GradientCorrectionEntryCalculator,
+    GradientCorrectionGradientEntryCalculator,
 )
 
 
-class L2ProductNSymStabilizationBasisEntryCalculator(
-    L2ProductCorrectionBasisEntryCalculator
-):
-    """Calculate int_K ah*(Duh-g(uh))*vi, where vi denotes the FEM basis."""
+class NSymEntryCalculator(GradientCorrectionEntryCalculator):
+    """Calculate int_K ah*(Duh-g(uh))*bi, where bi denotes the FEM basis."""
 
     _stabilization_parameter: float
 
@@ -55,41 +53,41 @@ class L2ProductNSymStabilizationBasisEntryCalculator(
         quadrature_degree: int,
         stabilization_parameter: float,
     ):
-        L2ProductCorrectionBasisEntryCalculator.__init__(
+        GradientCorrectionEntryCalculator.__init__(
             self, element_space, quadrature_degree
         )
         self._stabilization_parameter = stabilization_parameter
 
     def _left_term(self, simplex_index: int, quadrature_node_index: int) -> float:
-        discrete_solution_derivative = self._discrete_solution.derivative_on_simplex(
+        finite_element_derivative = self._finite_element.derivative(
             simplex_index, quadrature_node_index
         )
-        gradient_approximation_value = self._gradient_approximation.value_on_simplex(
+        gradient_approximation_value = self._gradient_approximation.value(
             simplex_index, quadrature_node_index
         )
 
         return self._alpha_h(
-            discrete_solution_derivative, gradient_approximation_value
-        ) * (discrete_solution_derivative - gradient_approximation_value)
+            finite_element_derivative, gradient_approximation_value
+        ) * (finite_element_derivative - gradient_approximation_value)
 
     def _alpha_h(
-        self, discrete_solution_derivative: float, gradient_approximation_value: float
+        self, finite_element_derivative: float, gradient_approximation_value: float
     ) -> float:
-        if discrete_solution_derivative != 0:
+        if finite_element_derivative != 0:
             return 1 - np.minimum(
                 self._stabilization_parameter,
-                np.absolute(discrete_solution_derivative - gradient_approximation_value)
-                / np.absolute(discrete_solution_derivative),
+                np.absolute(finite_element_derivative - gradient_approximation_value)
+                / np.absolute(finite_element_derivative),
             )
         else:
             return 0
 
 
-class L2ProductNSymStabilizationDerivativeBasisEntryCalculator(
-    L2ProductCorrectionDerivativeBasisEntryCalculator,
-    L2ProductNSymStabilizationBasisEntryCalculator,
+class NSymGradientEntryCalculator(
+    GradientCorrectionGradientEntryCalculator,
+    NSymEntryCalculator,
 ):
-    """Calculate int_K (Duh - ah*g(uh))*vi, where vi denotes the FEM basis."""
+    """Calculate int_K (Duh - ah*g(uh))*bi, where bi denotes the FEM basis."""
 
     _stabilization_parameter: float
 
@@ -99,22 +97,22 @@ class L2ProductNSymStabilizationDerivativeBasisEntryCalculator(
         quadrature_degree: int,
         stabilization_parameter: float,
     ):
-        L2ProductCorrectionDerivativeBasisEntryCalculator.__init__(
+        GradientCorrectionGradientEntryCalculator.__init__(
             self, element_space, quadrature_degree
         )
         self._stabilization_parameter = stabilization_parameter
 
     def _left_term(self, simplex_index: int, quadrature_node_index: int) -> float:
-        discrete_solution_derivative = self._discrete_solution.derivative_on_simplex(
+        finite_element_derivative = self._finite_element.derivative(
             simplex_index, quadrature_node_index
         )
-        gradient_approximation_value = self._gradient_approximation.value_on_simplex(
+        gradient_approximation_value = self._gradient_approximation.value(
             simplex_index, quadrature_node_index
         )
 
         return (
-            discrete_solution_derivative
-            - self._alpha_h(discrete_solution_derivative, gradient_approximation_value)
+            finite_element_derivative
+            - self._alpha_h(finite_element_derivative, gradient_approximation_value)
             * gradient_approximation_value
         )
 
@@ -124,8 +122,8 @@ class NonlinearAndSymmetricStabilizationBuilder(DOFVectorBuilder):
     _stabilization_factor: float
     _gradient_approximation_builder: DOFVectorBuilder
 
-    _l2_product_nsym_stabilization_basis_builder: L2ProductCorrectionBasisBuilder
-    _l2_product_nsym_stabilization_derivative_basis_builder: L2ProductCorrectionBasisBuilder
+    _nsym_builder: GradientCorrectionBuilder
+    _nsym_gradient_builder: GradientCorrectionBuilder
 
     _gradient_approximation_matrix: SystemMatrix
 
@@ -139,10 +137,8 @@ class NonlinearAndSymmetricStabilizationBuilder(DOFVectorBuilder):
         self._build_stabilization_factor()
 
         self._gradient_approximation_builder = gradient_approximation_builder
-        self._build_l2_product_nsym_stabilization_basis_builder(stabilization_parameter)
-        self._build_l2_product_nsym_stabilization_derivative_basis_builder(
-            stabilization_parameter
-        )
+        self._build_nsym_builder(stabilization_parameter)
+        self._build_nsym_gradient_builder(stabilization_parameter)
 
         self._build_gradient_approximation_matrix()
 
@@ -151,39 +147,27 @@ class NonlinearAndSymmetricStabilizationBuilder(DOFVectorBuilder):
             2 * self._element_space.polynomial_degree
         )
 
-    def _build_l2_product_nsym_stabilization_basis_builder(
-        self, stabilization_parameter: float
-    ):
-        l2_product_nsym_correction_basis_entry_calculator = (
-            L2ProductNSymStabilizationBasisEntryCalculator(
-                self._element_space,
-                self._element_space.polynomial_degree + 1,
-                stabilization_parameter,
-            )
+    def _build_nsym_builder(self, stabilization_parameter: float):
+        entry_calculator = NSymEntryCalculator(
+            self._element_space,
+            self._element_space.polynomial_degree + 1,
+            stabilization_parameter,
         )
 
-        self._l2_product_nsym_stabilization_basis_builder = (
-            L2ProductCorrectionBasisBuilder(
-                self._element_space, l2_product_nsym_correction_basis_entry_calculator
-            )
+        self._nsym__builder = GradientCorrectionBuilder(
+            self._element_space, entry_calculator
         )
 
-    def _build_l2_product_nsym_stabilization_derivative_basis_builder(
-        self, stabilization_parameter: float
-    ):
-        l2_product_nsym_correction_derivative_basis_builder = (
-            L2ProductNSymStabilizationDerivativeBasisEntryCalculator(
-                self._element_space,
-                self._element_space.polynomial_degree,
-                stabilization_parameter,
-            )
+    def _build_nsym_gradient_builder(self, stabilization_parameter: float):
+        entry_calculator = NSymGradientEntryCalculator(
+            self._element_space,
+            self._element_space.polynomial_degree,
+            stabilization_parameter,
         )
 
-        self._l2_product_nsym_stabilization_derivative_basis_builder = (
-            L2ProductCorrectionBasisBuilder(
-                self._element_space,
-                l2_product_nsym_correction_derivative_basis_builder,
-            )
+        self._nsym_gradient_builder = GradientCorrectionBuilder(
+            self._element_space,
+            entry_calculator,
         )
 
     def _build_gradient_approximation_matrix(self):
@@ -191,26 +175,18 @@ class NonlinearAndSymmetricStabilizationBuilder(DOFVectorBuilder):
             self._element_space, self._gradient_approximation_builder
         )
 
-    def build_vector(self, discrete_solution_dof_vector: np.ndarray) -> np.ndarray:
-        gradient_approximation_dof_vector = (
-            self._gradient_approximation_builder.build_vector(
-                discrete_solution_dof_vector
-            )
+    def build_dof(self, finite_element_dof: np.ndarray) -> np.ndarray:
+        gradient_approximation_dof = self._gradient_approximation_builder.build_dof(
+            finite_element_dof
         )
-        l2_product_nsym_stabilization_basis_vector = (
-            self._l2_product_nsym_stabilization_basis_builder.build_vector(
-                discrete_solution_dof_vector, gradient_approximation_dof_vector
-            )
+        nsym_discrete_l2_product = self._nsym__builder.build_dof(
+            finite_element_dof, gradient_approximation_dof
         )
-        l2_product_nsym_stabilization_derivative_basis_vector = (
-            self._l2_product_nsym_stabilization_derivative_basis_builder.build_vector(
-                discrete_solution_dof_vector, gradient_approximation_dof_vector
-            )
+        nsym_discrete_gradient_l2_product = self._nsym_gradient_builder.build_dof(
+            finite_element_dof, gradient_approximation_dof
         )
 
         return self._stabilization_factor * (
-            l2_product_nsym_stabilization_derivative_basis_vector
-            - self._gradient_approximation_matrix.dot(
-                l2_product_nsym_stabilization_basis_vector
-            )
+            nsym_discrete_gradient_l2_product
+            - self._gradient_approximation_matrix.dot(nsym_discrete_l2_product)
         )

@@ -3,12 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Iterator, List
 
 import numpy as np
-from math_types import (
-    BarycentricCoordinate,
-    FunctionBarycentricToReal,
-    FunctionBarycentricToRealD,
-    FunctionRealToReal,
-)
+from math_types import FunctionRealToReal
 from mesh import Interval, UniformMesh
 
 
@@ -25,23 +20,23 @@ class FiniteElement(ABC):
 
 
 class LocalFiniteElement(FiniteElement):
-    """Finite element basis element on the Gibbs simplex."""
+    """Finite element basis element on the standard simplex."""
 
-    _call_method: FunctionBarycentricToReal
-    _derivative: FunctionBarycentricToRealD
+    _call_method: FunctionRealToReal
+    _derivative: FunctionRealToReal
 
     def __init__(
         self,
-        call_method: FunctionBarycentricToReal,
-        derivative: FunctionBarycentricToRealD,
+        call_method: FunctionRealToReal,
+        derivative: FunctionRealToReal,
     ):
         self._call_method = call_method
         self._derivative = derivative
 
-    def __call__(self, point: BarycentricCoordinate) -> float:
+    def __call__(self, point: float) -> float:
         return self._call_method(point)
 
-    def derivative(self, point: BarycentricCoordinate) -> np.ndarray:
+    def derivative(self, point: float) -> float:
         return self._derivative(point)
 
 
@@ -68,7 +63,7 @@ class LocalFiniteElementBasis(ABC):
 
     @property
     @abstractmethod
-    def nodes(self) -> List[BarycentricCoordinate]:
+    def nodes(self) -> List[float]:
         ...
 
     @abstractmethod

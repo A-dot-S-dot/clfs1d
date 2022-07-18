@@ -1,11 +1,11 @@
 """This module provides averaged gradients for finite elements.
 
-The main idea is to approximate the gradient of a discrete solution uh with a
+The main idea is to approximate the gradient of a finite element v with a
 finite element function. Its values on a lagrange node is the mean value of the
 gradients of uh on every simplex which contains this node. i.e. in one dimension
 and uniform meshes we have
 
-    g_j(uh) = 1/2*( D+uh + D-uh ).
+    g_j(v) = 1/2*( D+v + D-v ).
 
 See 'Entropy conservation property and entropy stabilization of high-order
 continuous Galerkin approximations to scalar conservation laws', D. Kuzmin, M.
@@ -18,24 +18,22 @@ from fem import FiniteElementSpace
 from fem.fast_element import AnchorNodesFastFiniteElement
 
 from .builder import DOFVectorBuilder
-from .entry_calculator import DOFVectorEntryCalculator
+from .entry_calculator import DOFEntryCalculator
 
 
-class AveragedGradientEntryCalculator(DOFVectorEntryCalculator):
+class AveragedGradientDOFEntryCalculator(DOFEntryCalculator):
     _element_space: FiniteElementSpace
     _fast_element: AnchorNodesFastFiniteElement
-    _current_simplex_index: int
 
     def __init__(self, element_space: FiniteElementSpace):
         self._element_space = element_space
         self._fast_element = AnchorNodesFastFiniteElement(
             element_space,
         )
-        self._fast_element.add_derivatives()
-        self._current_simplex_index = -1
+        self._fast_element.set_derivatives()
 
-    def set_dof_vector(self, dof_vector: np.ndarray):
-        self._fast_element.set_dof_vector(dof_vector)
+    def set_element_dof(self, element_dof: np.ndarray):
+        self._fast_element.set_dof(element_dof)
 
     def __call__(self, simplex_index: int, local_index: int) -> float:
         weight = self._calculate_weight(local_index)
@@ -50,16 +48,16 @@ class AveragedGradientEntryCalculator(DOFVectorEntryCalculator):
             return 1
 
     def _build_entry(self, simplex_index: int, local_index: int) -> float:
-        return self._fast_element.derivative_on_simplex(simplex_index, local_index)
+        return self._fast_element.derivative(simplex_index, local_index)
 
 
-class AveragedGradientBuilder(DOFVectorBuilder):
-    _entry_calculator: AveragedGradientEntryCalculator
+class AveragedGradientDOFBuilder(DOFVectorBuilder):
+    _entry_calculator: AveragedGradientDOFEntryCalculator
 
     def __init__(self, element_space: FiniteElementSpace):
-        entry_calculator = AveragedGradientEntryCalculator(element_space)
+        entry_calculator = AveragedGradientDOFEntryCalculator(element_space)
         DOFVectorBuilder.__init__(self, element_space, entry_calculator)
 
-    def build_vector(self, dof_vector_to_approximate: np.ndarray) -> np.ndarray:
-        self._entry_calculator.set_dof_vector(dof_vector_to_approximate)
-        return super().build_vector()
+    def build_dof(self, element_to_approximate_dof: np.ndarray) -> np.ndarray:
+        self._entry_calculator.set_element_dof(element_to_approximate_dof)
+        return super().build_dof()

@@ -14,6 +14,13 @@ class MatrixAssembler(ABC):
 
 
 class LocalToGlobalMatrixAssembler(MatrixAssembler):
+    """Fills a matric using from local to global principles.
+
+    We loop through each element of the mesh and its local indices, calculate
+    something for that and add it to the related entry of the global matrix.
+
+    """
+
     _element_space: FiniteElementSpace
     _matrix_entry_calculator: SystemMatrixEntryCalculator
 

@@ -5,10 +5,10 @@ from fem.lagrange.lagrange import LagrangeFiniteElementSpace
 from mesh.interval import Interval
 from mesh.mesh import UniformMesh
 from scipy.integrate import quad
-from system.vectors.averaged_gradient import AveragedGradientBuilder
+from system.vectors.averaged_gradient import AveragedGradientDOFBuilder
 from system.vectors.symmetric_stabilization import SymmetricStabilizationBuilder
 
-from ...test_helper import *
+from ...test_helper.lagrange_basis_elements import *
 
 
 class TestLinearSymmetricStabilization(TestCase):
@@ -16,7 +16,7 @@ class TestLinearSymmetricStabilization(TestCase):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 1)
     stabilization_parameter = 0.5
-    gradient_builder = AveragedGradientBuilder(element_space)
+    gradient_builder = AveragedGradientDOFBuilder(element_space)
     builder = SymmetricStabilizationBuilder(
         element_space, stabilization_parameter, gradient_builder
     )
@@ -30,7 +30,7 @@ class TestLinearSymmetricStabilization(TestCase):
         for dof_vector, expected_nonlinear_stabilization in zip(
             self.dof_vectors, self.expected_nonlinear_stabilization_dof_vectors
         ):
-            nonlinear_stabilization = self.builder.build_vector(dof_vector)
+            nonlinear_stabilization = self.builder.build_dof(dof_vector)
             for stabilization_dof, expected_stabilization_dof in zip(
                 nonlinear_stabilization, expected_nonlinear_stabilization
             ):
@@ -42,7 +42,7 @@ class TestQuadraticSymmetricStabilization(TestCase):
     mesh = UniformMesh(domain, 2)
     element_space = LagrangeFiniteElementSpace(mesh, 2)
     stabilization_parameter = 0.5
-    gradient_builder = AveragedGradientBuilder(element_space)
+    gradient_builder = AveragedGradientDOFBuilder(element_space)
     builder = SymmetricStabilizationBuilder(
         element_space, stabilization_parameter, gradient_builder
     )
@@ -85,7 +85,7 @@ class TestQuadraticSymmetricStabilization(TestCase):
         )
 
     def test_nonlinear_stabilization(self):
-        nonlinear_stabilization = self.builder.build_vector(self.uh_dof_vector)
+        nonlinear_stabilization = self.builder.build_dof(self.uh_dof_vector)
 
         for i in range(len(nonlinear_stabilization)):
             self.assertAlmostEqual(

@@ -19,7 +19,11 @@ class SystemMatrixEntryCalculator(ABC):
 
 
 class ConstantSystemMatrixEntryCalculator(SystemMatrixEntryCalculator):
-    """Calculates the entries of the global system matrix by calculating a local one."""
+    """Calculates the entries of the global system matrix by calculating a local one.
+
+    In most cases this is used for uniform meshes and DOF independent matrices.
+
+    """
 
     _local_quadrature: LocalElementQuadrature
     _local_basis: LocalLagrangeBasis
